@@ -2,18 +2,13 @@ module State exposing (init, update, subscriptions)
 
 import Types exposing (..)
 import Time exposing (millisecond)
-import Tuple exposing (first, second)
+import Random exposing (generate, float, list, pair)
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( [ { x = 0.0
-        , y = 0.0
-        , vx = 0.1
-        , vy = 0.1
-        }
-      ]
-    , Cmd.none
+    ( []
+    , generate Init (list 5 (pair (float 0.0 1.0) (float 0.0 1.0)))
     )
 
 
@@ -46,11 +41,16 @@ updateBoid boid =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model of
-        [] ->
-            ( model, Cmd.none )
+    case msg of
+        Init velocitylist ->
+            ( [], Cmd.none )
 
-        h :: t ->
-            ( [ updateBoid h ]
-            , Cmd.none
-            )
+        Tick ->
+            case model of
+                [] ->
+                    ( model, Cmd.none )
+
+                h :: t ->
+                    ( [ updateBoid h ]
+                    , Cmd.none
+                    )
