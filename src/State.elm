@@ -1,13 +1,13 @@
 module State exposing (init, update, subscriptions)
 
 import Types exposing (..)
-import Time exposing (millisecond)
+import Time exposing (second)
 import Random exposing (generate, float, list, pair)
 
 
 t : Float
 t =
-    16 * millisecond
+    second / 60.0
 
 
 maxWidth : Float
@@ -65,27 +65,11 @@ update msg model =
 updateBoid : Boid -> Boid
 updateBoid boid =
     let
-        x_tmp =
-            boid.x + (t * boid.vx)
-
-        y_tmp =
-            boid.y + (t * boid.vy)
-
         ( x_new, vx_new ) =
-            if x_tmp < -maxWidth then
-                ( -maxWidth, -boid.vx )
-            else if x_tmp > maxWidth then
-                ( maxWidth, -boid.vx )
-            else
-                ( x_tmp, boid.vx )
+            bounceOffWalls ( boid.x, boid.vx )
 
         ( y_new, vy_new ) =
-            if y_tmp < -maxWidth then
-                ( -maxWidth, -boid.vy )
-            else if y_tmp > maxWidth then
-                ( maxWidth, -boid.vy )
-            else
-                ( y_tmp, boid.vy )
+            bounceOffWalls ( boid.y, boid.vy )
     in
         { boid
             | x = x_new
@@ -93,3 +77,17 @@ updateBoid boid =
             , vx = vx_new
             , vy = vy_new
         }
+
+
+bounceOffWalls : ( Float, Float ) -> ( Float, Float )
+bounceOffWalls ( pos, vel ) =
+    let
+        pos_step =
+            pos + (t * vel)
+    in
+        if pos_step < -maxWidth then
+            ( -maxWidth, -vel )
+        else if pos_step > maxWidth then
+            ( maxWidth, -vel )
+        else
+            ( pos_step, vel )
