@@ -1,11 +1,11 @@
 module Types exposing (..)
 
+import Math.Vector2 exposing (Vec2)
+
 
 type alias Boid =
-    { x : Float
-    , y : Float
-    , vx : Float
-    , vy : Float
+    { position : Vec2
+    , velocity : Vec2
     }
 
 
@@ -15,7 +15,7 @@ type alias Model =
 
 type Msg
     = Tick
-    | Init (List (List Float))
+    | Init (List Boid)
 
 
 

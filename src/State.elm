@@ -3,6 +3,7 @@ module State exposing (init, update, subscriptions)
 import Types exposing (..)
 import Time exposing (second)
 import Random exposing (generate, float, list, pair)
+import Math.Vector2 exposing (Vec2)
 
 
 t : Float
@@ -20,25 +21,27 @@ numBoids =
     50
 
 
+vectorGenerator : Float -> Float -> Random.Generator Vec2
+vectorGenerator lower upper =
+    Random.pair (Random.float lower upper) (Random.float lower upper)
+        |> Random.map Math.Vector2.fromTuple
+
+
+boidGenerator : Random.Generator Boid
+boidGenerator =
+    Random.map2
+        (\vector1 vector2 -> { position = vector1, velocity = vector2 })
+        (vectorGenerator -0.5 0.5)
+        (vectorGenerator -0.1 0.1)
+
+
 init : ( Model, Cmd Msg )
 init =
     ( []
-    , generate Init (list numBoids (list 4 (float 0.0 1.0)))
+    , generate Init <|
+        list numBoids <|
+            boidGenerator
     )
-
-
-initBoid : List Float -> Boid
-initBoid rand4 =
-    case rand4 of
-        [ a, b, c, d ] ->
-            { x = (a * maxWidth) - (maxWidth / 2.0)
-            , y = (b * maxWidth) - (maxWidth / 2.0)
-            , vx = (c * 1) - 0.05
-            , vy = (d * 1) - 0.05
-            }
-
-        _ ->
-            { x = 0.0, y = 0.0, vx = 0.0, vy = 0.0 }
 
 
 subscriptions : Model -> Sub Msg
@@ -51,8 +54,8 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Init randlist ->
-            ( List.map initBoid randlist
+        Init boidList ->
+            ( boidList
             , Cmd.none
             )
 
@@ -64,23 +67,33 @@ update msg model =
 
 updateBoid : Boid -> Boid
 updateBoid boid =
+    boid
+        |> bounceOffWalls
+
+
+bounceOffWalls : Boid -> Boid
+bounceOffWalls boid =
     let
+        ( x, y ) =
+            Math.Vector2.toTuple boid.position
+
+        ( vx, vy ) =
+            Math.Vector2.toTuple boid.velocity
+
         ( x_new, vx_new ) =
-            bounceOffWalls ( boid.x, boid.vx )
+            bounceOffWallsComponent ( x, vx )
 
         ( y_new, vy_new ) =
-            bounceOffWalls ( boid.y, boid.vy )
+            bounceOffWallsComponent ( y, vy )
     in
         { boid
-            | x = x_new
-            , y = y_new
-            , vx = vx_new
-            , vy = vy_new
+            | position = Math.Vector2.fromTuple ( x_new, y_new )
+            , velocity = Math.Vector2.fromTuple ( vx_new, vy_new )
         }
 
 
-bounceOffWalls : ( Float, Float ) -> ( Float, Float )
-bounceOffWalls ( pos, vel ) =
+bounceOffWallsComponent : ( Float, Float ) -> ( Float, Float )
+bounceOffWallsComponent ( pos, vel ) =
     let
         pos_step =
             pos + (t * vel)
