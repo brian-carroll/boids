@@ -17,13 +17,7 @@ root model =
             , viewBox "-500 -500 1000 1000"
             , Svg.Attributes.style "background: lightgray"
             ]
-            [ case model of
-                [] ->
-                    div [] []
-
-                h :: _ ->
-                    singleBoid h
-            ]
+            (List.map singleBoid model)
         ]
 
 
@@ -36,10 +30,10 @@ singleBoid b =
                 ++ ","
                 ++ (toString b.y)
                 ++ ") rotate("
-                ++ toString (((180 / pi) * Tuple.second (toPolar ( -b.vx, b.vy ))))
+                ++ toString (-90.0 + (180.0 / pi) * atan2 b.vy b.vx)
                 ++ ")"
             )
     in
         g [ transform transformString ]
-            [ polygon [ points "7 7, 0 -10, -7 7" ] []
+            [ polygon [ points "7 -7, 0 10, -7 -7" ] []
             ]

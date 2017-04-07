@@ -15,7 +15,7 @@ type alias Model =
 
 type Msg
     = Tick
-    | Init (List ( Float, Float ))
+    | Init (List (List Float))
 
 
 
