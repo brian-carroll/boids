@@ -39,5 +39,5 @@ singleBoid b =
             )
     in
         g [ transform transformString ]
-            [ polygon [ points "7 -7, 0 10, -7 -7" ] []
+            [ polygon [ points "3 -3, 0 5, -3 -3" ] []
             ]

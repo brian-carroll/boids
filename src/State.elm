@@ -14,7 +14,7 @@ cfg =
     , numBoids = 100
     , alignFactor = 0.005
     , minDist = 20
-    , collisionFactor = 0.001
+    , collisionFactor = 0.00005
     , centringFactor = 0.000005
     }
 
