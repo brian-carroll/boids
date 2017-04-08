@@ -12,9 +12,10 @@ cfg =
     { tick = second / 60.0
     , maxWidth = 500.0
     , numBoids = 100
-    , alignFactor = 0.001
+    , alignFactor = 0.005
     , minDist = 20
-    , collisionFactor = 0.0001
+    , collisionFactor = 0.001
+    , centringFactor = 0.000005
     }
 
 
@@ -38,7 +39,7 @@ boidGenerator : Random.Generator Boid
 boidGenerator =
     Random.map2
         (\vector1 vector2 -> { position = vector1, velocity = vector2 })
-        (vectorGenerator -0.5 0.5)
+        (vectorGenerator (-cfg.maxWidth) cfg.maxWidth)
         (vectorGenerator -0.5 0.5)
 
 
@@ -85,6 +86,29 @@ updateBoids boids =
         |> List.map bounceOffWalls
         |> alignBoids
         |> avoidCollisionManyToMany
+        |> flockCentring
+
+
+flockCentring : List Boid -> List Boid
+flockCentring boids =
+    let
+        avgPosition =
+            V2.scale invNumBoids <|
+                List.foldl
+                    (\b pos -> V2.add b.position pos)
+                    v0
+                    boids
+    in
+        List.map
+            (\b ->
+                { b
+                    | velocity =
+                        V2.sub b.velocity <|
+                            V2.scale cfg.centringFactor <|
+                                V2.sub b.position avgPosition
+                }
+            )
+            boids
 
 
 avoidCollisionManyToMany : List Boid -> List Boid
