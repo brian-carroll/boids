@@ -52,6 +52,8 @@ init =
     )
 
 
+{-| Useful in the REPL
+-}
 testModel : Model
 testModel =
     [ { position = V2.fromTuple ( 300, 400 ), velocity = V2.fromTuple ( 0.03, 0.04 ) }
@@ -83,12 +85,24 @@ update msg model =
 updateBoids : List Boid -> List Boid
 updateBoids boids =
     boids
+        |> List.map advanceTime
         |> List.map bounceOffWalls
         |> alignBoids
         |> avoidCollisionManyToMany
         |> flockCentring
 
 
+advanceTime : Boid -> Boid
+advanceTime boid =
+    { boid
+        | position =
+            V2.add boid.position <|
+                V2.scale cfg.tick boid.velocity
+    }
+
+
+{-| Should be direction-only
+-}
 flockCentring : List Boid -> List Boid
 flockCentring boids =
     let
@@ -111,6 +125,8 @@ flockCentring boids =
             boids
 
 
+{-| Should be direction-only
+-}
 avoidCollisionManyToMany : List Boid -> List Boid
 avoidCollisionManyToMany boids =
     List.indexedMap (avoidCollisionManyToOne boids) boids
@@ -125,7 +141,9 @@ avoidCollisionManyToOne everyboidy myIndex me =
                     if index == myIndex then
                         ( deltaV, index + 1 )
                     else
-                        ( V2.add deltaV (avoidCollisionOneToOne me.position boid.position), index + 1 )
+                        ( V2.add deltaV (avoidCollisionOneToOne me.position boid.position)
+                        , index + 1
+                        )
                 )
                 ( v0, 0 )
                 everyboidy
@@ -147,6 +165,8 @@ avoidCollisionOneToOne myPos otherPos =
             v0
 
 
+{-| Direction and speed
+-}
 alignBoids : List Boid -> List Boid
 alignBoids boids =
     let
@@ -170,6 +190,8 @@ alignBoid alignDirection boid =
     }
 
 
+{-| Should be direction-only
+-}
 bounceOffWalls : Boid -> Boid
 bounceOffWalls boid =
     let
@@ -193,13 +215,9 @@ bounceOffWalls boid =
 
 bounceOffWallsComponent : ( Float, Float ) -> ( Float, Float )
 bounceOffWallsComponent ( pos, vel ) =
-    let
-        pos_step =
-            pos + (cfg.tick * vel)
-    in
-        if pos_step < -cfg.maxWidth then
-            ( -cfg.maxWidth, -vel )
-        else if pos_step > cfg.maxWidth then
-            ( cfg.maxWidth, -vel )
-        else
-            ( pos_step, vel )
+    if pos < -cfg.maxWidth then
+        ( -cfg.maxWidth, -vel )
+    else if pos > cfg.maxWidth then
+        ( cfg.maxWidth, -vel )
+    else
+        ( pos, vel )
