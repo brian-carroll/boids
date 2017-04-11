@@ -2,10 +2,11 @@ module State exposing (..)
 
 -- module State exposing (init, update, subscriptions)
 
-import Types exposing (..)
 import Time exposing (second)
 import Random exposing (generate, float, list, pair)
+import Mouse
 import Math.Vector2 as V2 exposing (Vec2)
+import Types exposing (..)
 
 
 cfg =
@@ -15,7 +16,8 @@ cfg =
     , alignFactor = 0.005
     , minDist = 20
     , collisionFactor = 0.00005
-    , centringFactor = 0.000005
+    , centringFactor = 0.00001
+    , mouseFactor = 0.0001
     }
 
 
@@ -45,7 +47,9 @@ boidGenerator =
 
 init : ( Model, Cmd Msg )
 init =
-    ( []
+    ( { boids = []
+      , mouse = v0
+      }
     , generate Init <|
         list cfg.numBoids <|
             boidGenerator
@@ -56,15 +60,19 @@ init =
 -}
 testModel : Model
 testModel =
-    [ { position = V2.fromTuple ( 300, 400 ), velocity = V2.fromTuple ( 0.03, 0.04 ) }
-    , { position = V2.fromTuple ( 80, 60 ), velocity = V2.fromTuple ( 0.08, 0.06 ) }
-    ]
+    { boids =
+        [ { position = V2.fromTuple ( 300, 400 ), velocity = V2.fromTuple ( 0.03, 0.04 ) }
+        , { position = V2.fromTuple ( 80, 60 ), velocity = V2.fromTuple ( 0.08, 0.06 ) }
+        ]
+    , mouse = v0
+    }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every cfg.tick (always Tick)
+        [ Mouse.moves MouseMove
+        , Time.every cfg.tick (always Tick)
         ]
 
 
@@ -72,24 +80,40 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Init boidList ->
-            ( boidList
+            ( { model
+                | boids = boidList
+              }
             , Cmd.none
             )
 
         Tick ->
-            ( updateBoids model
+            ( { model
+                | boids = updateBoids model
+              }
+            , Cmd.none
+            )
+
+        MouseMove mousePos ->
+            ( { model
+                | mouse =
+                    V2.fromTuple
+                        ( -cfg.maxWidth + toFloat mousePos.x
+                        , -cfg.maxWidth + toFloat mousePos.y
+                        )
+              }
             , Cmd.none
             )
 
 
-updateBoids : List Boid -> List Boid
-updateBoids boids =
-    boids
+updateBoids : Model -> List Boid
+updateBoids model =
+    model.boids
         |> List.map advanceTime
         |> List.map bounceOffWalls
         |> alignBoids
         |> avoidCollisionManyToMany
         |> flockCentring
+        |> moveFlockTowardsPoint cfg.mouseFactor model.mouse
 
 
 advanceTime : Boid -> Boid
@@ -113,16 +137,21 @@ flockCentring boids =
                     v0
                     boids
     in
-        List.map
-            (\b ->
-                { b
-                    | velocity =
-                        V2.sub b.velocity <|
-                            V2.scale cfg.centringFactor <|
-                                V2.sub b.position avgPosition
-                }
-            )
-            boids
+        moveFlockTowardsPoint cfg.centringFactor avgPosition boids
+
+
+moveFlockTowardsPoint : Float -> Vec2 -> List Boid -> List Boid
+moveFlockTowardsPoint factor point boids =
+    List.map
+        (\b ->
+            { b
+                | velocity =
+                    V2.sub b.velocity <|
+                        V2.scale factor <|
+                            V2.sub b.position point
+            }
+        )
+        boids
 
 
 {-| Should be direction-only

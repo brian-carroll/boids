@@ -18,7 +18,7 @@ root model =
             , viewBox "-500 -500 1000 1000"
             , Svg.Attributes.style "background: lightgray"
             ]
-            (List.map singleBoid model)
+            (List.map singleBoid model.boids)
         ]
 
 

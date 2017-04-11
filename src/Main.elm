@@ -1,8 +1,8 @@
 module Main exposing (main)
 
-{-| Rock Paper Scissors
-    West London Hack Night
-@docs main
+{-| Boids
+    West London Hack Night, April 2017
+    @docs main
 -}
 
 -- External modules
