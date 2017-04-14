@@ -1,4 +1,4 @@
-module RandomModel exposing (model)
+module Data.InitModel100 exposing (model)
 
 import Types exposing (Model)
 import Math.Vector2 as V2 exposing (Vec2)

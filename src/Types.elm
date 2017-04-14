@@ -2,6 +2,7 @@ module Types exposing (..)
 
 import Math.Vector2 exposing (Vec2)
 import Mouse
+import Time exposing (Time)
 
 
 type alias Boid =
@@ -17,7 +18,7 @@ type alias Model =
 
 
 type Msg
-    = Tick
+    = Tick Time
     | MouseMove Mouse.Position
     | Init (List Boid)
 

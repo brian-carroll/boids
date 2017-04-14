@@ -18,6 +18,8 @@ cfg =
     , collisionFactor = 0.00005
     , centringFactor = 0.00001
     , mouseFactor = 0.0001
+    , neighbourDist = 50.0
+    , debugUpdate = False
     }
 
 
@@ -72,7 +74,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Mouse.moves MouseMove
-        , Time.every cfg.tick (always Tick)
+        , Time.every cfg.tick Tick
         ]
 
 
@@ -86,9 +88,13 @@ update msg model =
             , Cmd.none
             )
 
-        Tick ->
+        Tick timestamp ->
             ( { model
-                | boids = updateBoids model
+                | boids =
+                    if cfg.debugUpdate && ((round timestamp) % round (10 * second) < round cfg.tick) then
+                        Debug.log "update" <| updateBoids model
+                    else
+                        updateBoids model
               }
             , Cmd.none
             )
