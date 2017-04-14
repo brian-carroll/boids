@@ -12,12 +12,13 @@ import Types exposing (..)
 cfg =
     { tick = second / 60.0
     , maxWidth = 500.0
-    , numBoids = 100
+    , numBoids = 200
     , alignFactor = 0.005
-    , minDist = 20
+    , collisionDist = 20
     , collisionFactor = 0.00005
     , centringFactor = 0.00001
-    , mouseFactor = 0.0001
+    , mouseFactor = 0.00005
+    , neighbourDist = 50.0
     }
 
 
@@ -110,10 +111,32 @@ updateBoids model =
     model.boids
         |> List.map advanceTime
         |> List.map bounceOffWalls
-        |> alignBoids
-        |> avoidCollisionManyToMany
-        |> flockCentring
         |> moveFlockTowardsPoint cfg.mouseFactor model.mouse
+        |> findNeighbours
+        |> List.map alignBoids
+        |> List.map flockCentring
+        |> List.map avoidCollisionWithNeighbours
+        |> List.map Tuple.first
+
+
+findNeighbours : List Boid -> List ( Boid, List Boid )
+findNeighbours boids =
+    List.map
+        (\boid ->
+            ( boid
+            , List.filter (isNeighbour boid) boids
+            )
+        )
+        boids
+
+
+isNeighbour : Boid -> Boid -> Bool
+isNeighbour me other =
+    (areCloserThan cfg.neighbourDist me other)
+
+
+
+-- && (me /= other)
 
 
 advanceTime : Boid -> Boid
@@ -125,79 +148,83 @@ advanceTime boid =
     }
 
 
-{-| Should be direction-only
--}
-flockCentring : List Boid -> List Boid
-flockCentring boids =
-    let
-        avgPosition =
-            V2.scale invNumBoids <|
-                List.foldl
-                    (\b pos -> V2.add b.position pos)
-                    v0
-                    boids
-    in
-        moveFlockTowardsPoint cfg.centringFactor avgPosition boids
+flockCentring : ( Boid, List Boid ) -> ( Boid, List Boid )
+flockCentring ( boid, neighbours ) =
+    case neighbours of
+        [] ->
+            ( boid, neighbours )
+
+        _ ->
+            let
+                ( sumPosition, count ) =
+                    List.foldl
+                        (\b ( pos, i ) -> ( V2.add b.position pos, i + 1.0 ))
+                        ( v0, 0.0 )
+                        neighbours
+
+                avgPosition =
+                    V2.scale (1.0 / count) sumPosition
+            in
+                ( moveTowardsPoint cfg.centringFactor avgPosition boid
+                , neighbours
+                )
 
 
 moveFlockTowardsPoint : Float -> Vec2 -> List Boid -> List Boid
 moveFlockTowardsPoint factor point boids =
     List.map
-        (\b ->
-            { b
-                | velocity =
-                    V2.sub b.velocity <|
-                        V2.scale factor <|
-                            V2.sub b.position point
-            }
-        )
+        (moveTowardsPoint factor point)
         boids
 
 
-{-| Should be direction-only
--}
-avoidCollisionManyToMany : List Boid -> List Boid
-avoidCollisionManyToMany boids =
-    List.indexedMap (avoidCollisionManyToOne boids) boids
+moveTowardsPoint : Float -> Vec2 -> Boid -> Boid
+moveTowardsPoint factor point b =
+    { b
+        | velocity =
+            V2.sub b.velocity <|
+                V2.scale factor <|
+                    V2.sub b.position point
+    }
 
 
-avoidCollisionManyToOne : List Boid -> Int -> Boid -> Boid
-avoidCollisionManyToOne everyboidy myIndex me =
+avoidCollisionWithNeighbours : ( Boid, List Boid ) -> ( Boid, List Boid )
+avoidCollisionWithNeighbours ( me, neighbours ) =
     let
-        ( dv, _ ) =
+        newVel =
             List.foldl
-                (\boid ( deltaV, index ) ->
-                    if index == myIndex then
-                        ( deltaV, index + 1 )
-                    else
-                        ( V2.add deltaV (avoidCollisionOneToOne me.position boid.position)
-                        , index + 1
-                        )
+                (\neighbour vel ->
+                    V2.add vel (avoidCollisionOneToOne me neighbour)
                 )
-                ( v0, 0 )
-                everyboidy
+                me.velocity
+                neighbours
     in
-        { me
-            | velocity = V2.add me.velocity dv
-        }
+        ( { me
+            | velocity = newVel
+          }
+        , neighbours
+        )
 
 
-avoidCollisionOneToOne : Vec2 -> Vec2 -> Vec2
-avoidCollisionOneToOne myPos otherPos =
+avoidCollisionOneToOne : Boid -> Boid -> Vec2
+avoidCollisionOneToOne me other =
+    if areCloserThan cfg.collisionDist me other then
+        V2.scale cfg.collisionFactor <| V2.sub me.position other.position
+    else
+        v0
+
+
+areCloserThan : Float -> Boid -> Boid -> Bool
+areCloserThan minDist boid1 boid2 =
     let
-        diff =
-            V2.sub myPos otherPos
+        dist =
+            V2.sub boid1.position boid2.position
     in
-        if abs (V2.getX diff) < cfg.minDist && abs (V2.getY diff) < cfg.minDist then
-            V2.scale cfg.collisionFactor <| V2.sub myPos otherPos
-        else
-            v0
+        (abs (V2.getX dist) < minDist)
+            && (abs (V2.getY dist) < minDist)
 
 
-{-| Direction and speed
--}
-alignBoids : List Boid -> List Boid
-alignBoids boids =
+alignBoids : ( Boid, List Boid ) -> ( Boid, List Boid )
+alignBoids ( boid, boids ) =
     let
         avgVelocity =
             V2.scale invNumBoids <|
@@ -206,7 +233,9 @@ alignBoids boids =
                     v0
                     boids
     in
-        List.map (alignBoid avgVelocity) boids
+        ( alignBoid avgVelocity boid
+        , boids
+        )
 
 
 alignBoid : Vec2 -> Boid -> Boid
@@ -219,8 +248,6 @@ alignBoid alignDirection boid =
     }
 
 
-{-| Should be direction-only
--}
 bounceOffWalls : Boid -> Boid
 bounceOffWalls boid =
     let
