@@ -1,8 +1,8 @@
 module Main exposing (main)
 
 {-| Boids
-    West London Hack Night, April 2017
-    @docs main
+West London Hack Night, April 2017
+@docs main
 -}
 
 -- External modules

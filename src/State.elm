@@ -12,7 +12,7 @@ import Types exposing (..)
 cfg =
     { tick = second / 60.0
     , maxWidth = 500.0
-    , numBoids = 100
+    , numBoids = 200
     , alignFactor = 0.005
     , minDist = 20
     , collisionFactor = 0.00005
