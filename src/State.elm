@@ -2,7 +2,8 @@ module State exposing (..)
 
 -- module State exposing (init, update, subscriptions)
 
-import Time exposing (second)
+import Time exposing (Time)
+import AnimationFrame
 import Random exposing (generate, float, list, pair)
 import Mouse
 import Math.Vector2 as V2 exposing (Vec2)
@@ -10,8 +11,7 @@ import Types exposing (..)
 
 
 cfg =
-    { tick = second / 60.0
-    , maxWidth = 500.0
+    { maxWidth = 500.0
     , numBoids = 200
     , alignFactor = 0.005
     , minDist = 20
@@ -74,7 +74,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Mouse.moves MouseMove
-        , Time.every cfg.tick Tick
+        , AnimationFrame.diffs Tick
         ]
 
 
@@ -88,13 +88,10 @@ update msg model =
             , Cmd.none
             )
 
-        Tick timestamp ->
+        Tick timeSinceLastFrame ->
             ( { model
                 | boids =
-                    if cfg.debugUpdate && ((round timestamp) % round (10 * second) < round cfg.tick) then
-                        Debug.log "update" <| updateBoids model
-                    else
-                        updateBoids model
+                    updateBoids timeSinceLastFrame model
               }
             , Cmd.none
             )
@@ -111,10 +108,10 @@ update msg model =
             )
 
 
-updateBoids : Model -> List Boid
-updateBoids model =
+updateBoids : Time -> Model -> List Boid
+updateBoids timeSinceLastFrame model =
     model.boids
-        |> List.map advanceTime
+        |> List.map (advanceTime timeSinceLastFrame)
         |> List.map bounceOffWalls
         |> alignBoids
         |> avoidCollisionManyToMany
@@ -122,12 +119,12 @@ updateBoids model =
         |> moveFlockTowardsPoint cfg.mouseFactor model.mouse
 
 
-advanceTime : Boid -> Boid
-advanceTime boid =
+advanceTime : Time -> Boid -> Boid
+advanceTime deltaT boid =
     { boid
         | position =
             V2.add boid.position <|
-                V2.scale cfg.tick boid.velocity
+                V2.scale deltaT boid.velocity
     }
 
 
